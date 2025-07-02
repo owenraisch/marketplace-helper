@@ -94,7 +94,7 @@ Analyze the image(s) and provide a response in the following JSON format:
 Make the listing engaging and honest. Price competitively based on what you see. 
 Your entire response must be valid JSON only. DO NOT include any text outside the JSON structure.`;
 
-                    const response = await fetch('/.netlify/functions/generate-listing', {
+                    const response = await fetch('/.netlify/functions/generate-listings', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -156,7 +156,7 @@ Keywords: ${listing.keywords.join(', ')}`;
                 try {
                     const prompt = `You are helping a 60+ year old person who is new to selling online. They asked: "${question}". Answer in a friendly, clear, and helpful way without using technical jargon. Keep your answer concise but helpful.`;
 
-                    const response = await fetch('/.netlify/functions/generate-listing', {
+                    const response = await fetch('/.netlify/functions/generate-listings', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
