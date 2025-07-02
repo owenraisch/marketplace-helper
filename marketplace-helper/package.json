@@ -1,8 +1,0 @@
-{
-  "name": "marketplace-helper",
-  "version": "1.0.0",
-  "description": "Dependencies for Netlify function",
-  "dependencies": {
-    "openai": "^4.52.0"
-  }
-}
