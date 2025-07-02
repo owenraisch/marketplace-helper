@@ -1,6 +1,5 @@
-// File: netlify/functions/generate-listing.js
+// File: netlify/functions/generate-listings.js
 
-// You may need to install the openai library for local testing: npm install openai
 import { OpenAI } from 'openai';
 
 // Initialize OpenAI with the key from Netlify's environment variables
@@ -14,9 +13,8 @@ export const handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
   
-  // Set headers for the response
   const headers = {
-    'Access-Control-Allow-Origin': '*', // Allows your frontend to call this function
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json'
   };
@@ -24,40 +22,49 @@ export const handler = async (event) => {
   try {
     const { images, prompt } = JSON.parse(event.body);
 
-    // Prepare the messages array for the OpenAI API call
+    // This combined logic handles both text-only and image requests correctly.
     const messages = [{
       role: 'user',
       content: [
         { type: 'text', text: prompt },
-        // --- CHANGE 1 of 2: Add the required Data URI prefix to each image ---
-        ...(images ? images.map(img => ({ 
-            type: 'image_url', 
-            image_url: { url: `data:image/jpeg;base64,${img}` } 
-        })) : [])
+        // If images exist, map them into the correct format with the required prefix.
+        // If not, this does nothing, leaving it as a text-only request.
+        ...(images && images.length > 0
+          ? images.map(img => ({
+              type: 'image_url',
+              image_url: { url: `data:image/jpeg;base64,${img}` }
+            }))
+          : [])
       ],
     }];
     
-    // Call the OpenAI API using the gpt-4o model
-    const response = await openai.chat.completions.create({
+    // Create a base request object
+    const request = {
       model: "gpt-4o",
       messages: messages,
-      max_tokens: 1000,
-      // --- CHANGE 2 of 2: Add this line to guarantee OpenAI returns valid JSON ---
-      response_format: { "type": "json_object" },
-    });
+      max_tokens: 1500,
+    };
+
+    // **IMPORTANT**: Only force a JSON response when images are present,
+    // otherwise the text-only Q&A would fail.
+    if (images && images.length > 0) {
+      request.response_format = { "type": "json_object" };
+    }
+    
+    // Call the OpenAI API with the prepared request
+    const response = await openai.chat.completions.create(request);
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(response), // Send the entire response back
+      body: JSON.stringify(response),
     };
 
   } catch (error) {
-    console.error('OpenAI API Error:', error);
+    console.error('API Error:', error);
     return {
       statusCode: 500,
       headers,
-      // Send back a more specific error message for easier debugging
       body: JSON.stringify({ error: error.message || 'There was an error processing your request.' }),
     };
   }
