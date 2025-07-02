@@ -1,14 +1,13 @@
 // File: netlify/functions/generate-listing.js
-
 // You may need to install the openai library for local testing: npm install openai
-import { OpenAI } from 'openai';
+const { OpenAI } = require('openai');
 
 // Initialize OpenAI with the key from Netlify's environment variables
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export const handler = async (event) => {
+exports.handler = async (event) => {
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
@@ -46,7 +45,6 @@ export const handler = async (event) => {
       headers,
       body: JSON.stringify(response), // Send the entire response back
     };
-
   } catch (error) {
     console.error('OpenAI API Error:', error);
     return {
