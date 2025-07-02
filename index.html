@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easy Facebook Marketplace Helper 2.0</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState } = React;
+        
+        // Icon components as SVG
+        const Camera = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><circle cx="12" cy="13" r="3" /></svg>;
+        const Upload = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>;
+        const Copy = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>;
+        const CheckCircle = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        const Package = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>;
+        const DollarSign = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        const FileText = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
+        const AlertCircle = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        const HelpCircle = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        const ChevronRight = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>;
+        const X = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>;
+        const Plus = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>;
+
+        function MarketplaceListingGenerator() {
+            const [images, setImages] = useState([]);
+            const [listing, setListing] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [copied, setCopied] = useState(false);
+            const [error, setError] = useState(null);
+            const [showDetailedHelp, setShowDetailedHelp] = useState(false);
+            const [question, setQuestion] = useState('');
+            const [answer, setAnswer] = useState('');
+            const [askingQuestion, setAskingQuestion] = useState(false);
+
+            const handleImageUpload = (e) => {
+                const files = Array.from(e.target.files);
+                
+                files.forEach((file) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setImages(prev => [...prev, reader.result]);
+                        setListing(null);
+                        setCopied(false);
+                        setError(null);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            };
+
+            const removeImage = (index) => {
+                setImages(prev => prev.filter((_, i) => i !== index));
+                if (images.length === 1) {
+                    setListing(null);
+                }
+            };
+
+            const generateListing = async () => {
+                if (images.length === 0) return;
+                
+                setLoading(true);
+                setError(null);
+                
+                try {
+                    const prompt = `You are analyzing ${images.length} image(s) of an item someone wants to sell on Facebook Marketplace. Please examine the image(s) carefully and create a complete, ready-to-post listing.
+
+Analyze the image(s) and provide a response in the following JSON format:
+{
+  "title": "Catchy, descriptive title under 100 characters",
+  "price": "Suggested price or price range in USD",
+  "category": "Most appropriate Facebook Marketplace category",
+  "condition": "New, Like New, Good, or Fair",
+  "description": "Detailed 3-4 paragraph description including: what the item is, key features, condition details, dimensions if visible, why someone would want it, and any visible brand/model info. If multiple photos show different angles, describe what each shows.",
+  "keywords": ["keyword1", "keyword2", "keyword3"],
+  "sellingTips": ["tip1", "tip2", "tip3"]
+}
+
+Make the listing engaging and honest. Price competitively based on what you see. 
+Your entire response must be valid JSON only. DO NOT include any text outside the JSON structure.`;
+
+                    const response = await fetch('/.netlify/functions/generate-listing', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            images: images,
+                            prompt: prompt
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to generate listing');
+                    }
+
+                    const content = data.choices[0].message.content;
+                    
+                    try {
+                        const parsedListing = JSON.parse(content);
+                        setListing(parsedListing);
+                    } catch (parseError) {
+                        console.error('Error parsing response:', parseError);
+                        setError('Failed to parse the listing. Please try again.');
+                    }
+                } catch (err) {
+                    console.error('Error generating listing:', err);
+                    setError('Failed to generate listing. Please check your internet connection and try again.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const copyToClipboard = () => {
+                if (!listing) return;
+                
+                const textToCopy = `Title: ${listing.title}
+
+Price: ${listing.price}
+Condition: ${listing.condition}
+Category: ${listing.category}
+
+Description:
+${listing.description}
+
+Keywords: ${listing.keywords.join(', ')}`;
+                
+                navigator.clipboard.writeText(textToCopy);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 3000);
+            };
+
+            const askQuestion = async () => {
+                if (!question.trim()) return;
+                
+                setAskingQuestion(true);
+                setAnswer('');
+                
+                try {
+                    const prompt = `You are helping a 60+ year old person who is new to selling online. They asked: "${question}". Answer in a friendly, clear, and helpful way without using technical jargon. Keep your answer concise but helpful.`;
+
+                    const response = await fetch('/.netlify/functions/generate-listing', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            prompt: prompt
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to get answer');
+                    }
+
+                    setAnswer(data.choices[0].message.content);
+                } catch (err) {
+                    setAnswer("I'm having trouble answering right now. Try asking something like 'How do I price my item?' or 'What makes a good photo?'");
+                } finally {
+                    setAskingQuestion(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+                    <div className="max-w-4xl mx-auto">
+                        <header className="text-center mb-8 pt-8">
+                            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                                Easy Facebook Marketplace Helper
+                            </h1>
+                            <p className="text-xl text-gray-600">
+                                We'll help you sell your items online - it's easier than you think!
+                            </p>
+                        </header>
+
+                        {/* Step 1: Upload Photos */}
+                        <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                                    1
+                                </div>
+                                <h2 className="text-2xl font-bold text-gray-800">Add Photos of Your Item</h2>
+                            </div>
+                            
+                            <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                                <p className="text-lg text-gray-800">
+                                    <strong>Tip:</strong> You can add multiple photos! Different angles help buyers see your item better.
+                                </p>
+                            </div>
+
+                            {images.length === 0 ? (
+                                <div className="border-3 border-dashed border-blue-300 rounded-lg p-12 text-center bg-blue-50">
+                                    <div className="w-20 h-20 mx-auto mb-4 text-blue-600">
+                                        <Camera />
+                                    </div>
+                                    <label htmlFor="image-upload" className="cursor-pointer">
+                                        <span className="mt-2 block text-lg font-medium text-gray-900 mb-2">
+                                            Click one of the buttons below
+                                        </span>
+                                        <input
+                                            id="image-upload"
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            capture="environment"
+                                            multiple
+                                            onChange={handleImageUpload}
+                                        />
+                                        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+                                            <button 
+                                                onClick={() => document.getElementById('image-upload').click()}
+                                                className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-3 text-lg font-medium"
+                                            >
+                                                <Camera />
+                                                Take Photo Now
+                                            </button>
+                                            <label htmlFor="file-upload" className="cursor-pointer">
+                                                <input
+                                                    id="file-upload"
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    multiple
+                                                    onChange={handleImageUpload}
+                                                />
+                                                <span className="px-8 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors inline-flex items-center gap-3 text-lg font-medium cursor-pointer">
+                                                    <Upload />
+                                                    Choose From Gallery
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </label>
+                                    <p className="mt-4 text-gray-600 text-lg">
+                                        You can add up to 10 photos
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {images.map((image, index) => (
+                                            <div key={index} className="relative group">
+                                                <img
+                                                    src={image}
+                                                    alt={`Item photo ${index + 1}`}
+                                                    className="w-full h-40 object-cover rounded-lg border-2 border-gray-200"
+                                                />
+                                                <button
+                                                    onClick={() => removeImage(index)}
+                                                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X />
+                                                </button>
+                                                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black bg-opacity-70 text-white text-sm rounded">
+                                                    Photo {index + 1}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        
+                                        {images.length < 10 && (
+                                            <label htmlFor="add-more-images" className="cursor-pointer">
+                                                <input
+                                                    id="add-more-images"
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    multiple
+                                                    onChange={handleImageUpload}
+                                                />
+                                                <div className="h-40 border-3 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-blue-400 transition-colors bg-gray-50">
+                                                    <Plus />
+                                                    <span className="text-gray-600">Add More</span>
+                                                </div>
+                                            </label>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="text-center mt-6">
+                                        <p className="text-lg text-gray-700 mb-4">
+                                            Great! You have {images.length} photo{images.length > 1 ? 's' : ''}. Now let's create your listing.
+                                        </p>
+                                        <button
+                                            onClick={generateListing}
+                                            disabled={loading}
+                                            className="px-8 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-lg inline-flex items-center gap-3"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                                                    Creating Your Listing... (This takes about 10 seconds)
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ChevronRight />
+                                                    Create My Listing
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {error && (
+                            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 mb-6 flex items-start gap-3">
+                                <AlertCircle />
+                                <div>
+                                    <p className="text-red-800 text-lg font-medium">Something went wrong</p>
+                                    <p className="text-red-700">Please try again with clear photos of your item.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {listing && (
+                            <>
+                                {/* Step 2: Review Listing */}
+                                <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                                            ✓
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-gray-800">Your Listing is Ready!</h2>
+                                    </div>
+
+                                    <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 mb-6">
+                                        <p className="text-lg text-gray-800 mb-4">
+                                            We've created everything you need to post on Facebook Marketplace. 
+                                            Click the green button below to copy all this information:
+                                        </p>
+                                        <button
+                                            onClick={copyToClipboard}
+                                            className="w-full px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors inline-flex items-center justify-center gap-3 text-lg font-medium"
+                                        >
+                                            {copied ? (
+                                                <>
+                                                    <CheckCircle />
+                                                    Information Copied! Now follow the steps below.
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Copy />
+                                                    Copy All Information
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="border-l-4 border-blue-500 pl-6">
+                                            <h3 className="font-bold text-gray-700 mb-2 text-lg">Title</h3>
+                                            <p className="text-xl bg-gray-50 p-3 rounded">{listing.title}</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="border-l-4 border-green-500 pl-6">
+                                                <h3 className="font-bold text-gray-700 mb-2 text-lg flex items-center gap-2">
+                                                    <DollarSign />
+                                                    Price
+                                                </h3>
+                                                <p className="text-xl bg-gray-50 p-3 rounded">{listing.price}</p>
+                                            </div>
+                                            
+                                            <div className="border-l-4 border-purple-500 pl-6">
+                                                <h3 className="font-bold text-gray-700 mb-2 text-lg flex items-center gap-2">
+                                                    <Package />
+                                                    Condition
+                                                </h3>
+                                                <p className="text-xl bg-gray-50 p-3 rounded">{listing.condition}</p>
+                                            </div>
+                                            
+                                            <div className="border-l-4 border-orange-500 pl-6">
+                                                <h3 className="font-bold text-gray-700 mb-2 text-lg">Category</h3>
+                                                <p className="text-xl bg-gray-50 p-3 rounded">{listing.category}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="border-l-4 border-indigo-500 pl-6">
+                                            <h3 className="font-bold text-gray-700 mb-2 text-lg flex items-center gap-2">
+                                                <FileText />
+                                                Description
+                                            </h3>
+                                            <div className="bg-gray-50 p-4 rounded-lg">
+                                                <p className="whitespace-pre-wrap text-gray-800 text-lg leading-relaxed">{listing.description}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Step 3: Post to Facebook */}
+                                <div className="bg-white rounded-xl shadow-lg p-8">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                                            2
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-gray-800">Now Let's Post It on Facebook</h2>
+                                    </div>
+
+                                    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mb-6">
+                                        <div className="flex items-start gap-3">
+                                            <HelpCircle />
+                                            <div>
+                                                <p className="text-lg text-gray-800 font-medium mb-2">
+                                                    Don't worry - we'll walk you through each step!
+                                                </p>
+                                                <p className="text-gray-700">
+                                                    Make sure you've clicked "Copy All Information" above first.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <h3 className="font-bold text-xl text-gray-800 mb-4">
+                                            Follow These Simple Steps:
+                                        </h3>
+                                        
+                                        <div className="space-y-4">
+                                            <div className="flex gap-4">
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
+                                                    1
+                                                </div>
+                                                <div>
+                                                    <p className="text-lg text-gray-800 font-medium">Open Facebook</p>
+                                                    <p className="text-gray-600 mt-1">
+                                                        Go to <span className="font-medium">facebook.com</span> and log in to your account
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4">
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
+                                                    2
+                                                </div>
+                                                <div>
+                                                    <p className="text-lg text-gray-800 font-medium">Find Marketplace</p>
+                                                    <p className="text-gray-600 mt-1">
+                                                        Look for "Marketplace" in the menu on the left side of Facebook. 
+                                                        It looks like a little shop icon 🏪
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4">
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
+                                                    3
+                                                </div>
+                                                <div>
+                                                    <p className="text-lg text-gray-800 font-medium">Create New Listing</p>
+                                                    <p className="text-gray-600 mt-1">
+                                                        Click the button that says "Create new listing" or "Sell"
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4">
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
+                                                    4
+                                                </div>
+                                                <div>
+                                                    <p className="text-lg text-gray-800 font-medium">Choose "Item for Sale"</p>
+                                                    <p className="text-gray-600 mt-1">
+                                                        Select this option (not vehicle or home)
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4">
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
+                                                    5
+                                                </div>
+                                                <div>
+                                                    <p className="text-lg text-gray-800 font-medium">Add Your Photos</p>
+                                                    <p className="text-gray-600 mt-1">
+                                                        Click "Add Photos" and upload all {images.length} photo{images.length > 1 ? 's' : ''} you took here
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4">
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
+                                                    6
+                                                </div>
+                                                <div>
+                                                    <p className="text-lg text-gray-800 font-medium">Paste Your Information</p>
+                                                    <p className="text-gray-600 mt-1">
+                                                        Click in each box (Title, Price, Description, etc.) and paste 
+                                                        the information we copied for you. Use <span className="font-medium">Ctrl+V</span> on PC 
+                                                        or <span className="font-medium">Cmd+V</span> on Mac to paste.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4">
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
+                                                    7
+                                                </div>
+                                                <div>
+                                                    <p className="text-lg text-gray-800 font-medium">Set Your Location</p>
+                                                    <p className="text-gray-600 mt-1">
+                                                        Tell Facebook where you're located so buyers can find you
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4">
+                                                <div className="w-12 h-12 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
+                                                    8
+                                                </div>
+                                                <div>
+                                                    <p className="text-lg text-gray-800 font-medium">Publish Your Listing!</p>
+                                                    <p className="text-gray-600 mt-1">
+                                                        Click the blue "Publish" button and you're done! 🎉
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => setShowDetailedHelp(!showDetailedHelp)}
+                                            className="mt-6 text-blue-600 hover:text-blue-700 font-medium text-lg inline-flex items-center gap-2"
+                                        >
+                                            <HelpCircle />
+                                            {showDetailedHelp ? 'Hide' : 'Show'} Detailed Help
+                                        </button>
+
+                                        {showDetailedHelp && (
+                                            <div className="mt-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6">
+                                                <h4 className="font-bold text-lg mb-3">Need More Help?</h4>
+                                                <ul className="space-y-2 text-gray-700">
+                                                    <li>• <strong>Can't find Marketplace?</strong> It might be in the "More" menu or at the top of your Facebook page</li>
+                                                    <li>• <strong>Having trouble pasting?</strong> Right-click in the box and select "Paste"</li>
+                                                    <li>• <strong>Price not sure?</strong> You can always change it later!</li>
+                                                    <li>• <strong>Category confusing?</strong> Pick the closest match - Facebook will help suggest the right one</li>
+                                                    <li>• <strong>Still stuck?</strong> Ask a family member or friend to help - it gets easier each time!</li>
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Help Section - Always visible */}
+                    <div className="max-w-4xl mx-auto mt-8 mb-8">
+                        <div className="bg-white rounded-xl shadow-lg p-8">
+                            <div className="flex items-center gap-3 mb-6">
+                                <HelpCircle />
+                                <h2 className="text-2xl font-bold text-gray-800">Have a Question?</h2>
+                            </div>
+                            
+                            <p className="text-lg text-gray-600 mb-4">
+                                I'm here to help! Ask me anything about selling online or using Facebook Marketplace.
+                            </p>
+                            
+                            <div className="flex gap-3">
+                                <input
+                                    type="text"
+                                    value={question}
+                                    onChange={(e) => setQuestion(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && askQuestion()}
+                                    placeholder="Type your question here..."
+                                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg text-lg focus:border-blue-500 focus:outline-none"
+                                />
+                                <button
+                                    onClick={askQuestion}
+                                    disabled={askingQuestion || !question.trim()}
+                                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-lg"
+                                >
+                                    {askingQuestion ? 'Thinking...' : 'Ask'}
+                                </button>
+                            </div>
+                            
+                            {answer && (
+                                <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                                    <p className="text-lg text-gray-800 leading-relaxed">{answer}</p>
+                                </div>
+                            )}
+                            
+                            <div className="mt-4 pt-4 border-t">
+                                <p className="text-gray-600 font-medium mb-2">Example questions:</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        "How do I take a good photo?",
+                                        "What price should I ask?",
+                                        "Is Facebook Marketplace safe?",
+                                        "How do I meet buyers?"
+                                    ].map((q) => (
+                                        <button
+                                            key={q}
+                                            onClick={() => setQuestion(q)}
+                                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                                        >
+                                            {q}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<MarketplaceListingGenerator />);
+    </script>
+</body>
+</html>
