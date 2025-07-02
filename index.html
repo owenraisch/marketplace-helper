@@ -133,11 +133,14 @@ Analyze the image(s) and provide a response in the following JSON format:
 Make the listing engaging and honest. Price competitively based on what you see. 
 Your entire response must be valid JSON only. DO NOT include any text outside the JSON structure.`;
 
+                    // *** THIS IS THE ONLY LINE THAT HAS CHANGED ***
+                    const imagePayload = images.map(dataUri => dataUri.split(',')[1]);
+
                     const response = await fetch('/.netlify/functions/generate-listings', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            images: images,
+                            images: imagePayload, // Sends the cleaned-up Base64 strings
                             prompt: prompt
                         })
                     });
