@@ -29,8 +29,11 @@ export const handler = async (event) => {
       role: 'user',
       content: [
         { type: 'text', text: prompt },
-        // Map images to the format OpenAI expects
-        ...(images ? images.map(img => ({ type: 'image_url', image_url: { url: img } })) : [])
+        // --- CHANGE 1 of 2: Add the required Data URI prefix to each image ---
+        ...(images ? images.map(img => ({ 
+            type: 'image_url', 
+            image_url: { url: `data:image/jpeg;base64,${img}` } 
+        })) : [])
       ],
     }];
     
@@ -39,6 +42,8 @@ export const handler = async (event) => {
       model: "gpt-4o",
       messages: messages,
       max_tokens: 1000,
+      // --- CHANGE 2 of 2: Add this line to guarantee OpenAI returns valid JSON ---
+      response_format: { "type": "json_object" },
     });
 
     return {
@@ -52,7 +57,8 @@ export const handler = async (event) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'There was an error processing your request.' }),
+      // Send back a more specific error message for easier debugging
+      body: JSON.stringify({ error: error.message || 'There was an error processing your request.' }),
     };
   }
 };
