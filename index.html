@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tito Nieto's Facebook Marketplace Helper 2.0</title>
+    <title>Easy Facebook Marketplace Helper 2.0</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .animate-spin {
             animation: spin 1s linear infinite;
@@ -15,6 +16,15 @@
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+        /* Styles for AI-generated lists */
+        .prose ul, .prose ol {
+            padding-left: 1.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .prose li {
+            margin-bottom: 0.25rem;
         }
     </style>
 </head>
@@ -24,7 +34,7 @@
     <script type="text/babel">
         const { useState } = React;
         
-        // Icon components as SVG
+        // Icon components
         const Camera = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><circle cx="12" cy="13" r="3" /></svg>;
         const Upload = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>;
         const Copy = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>;
@@ -87,8 +97,18 @@
             const handleImageUpload = (e) => {
                 const files = Array.from(e.target.files);
                 if (!files.length) return;
+
+                const validFiles = files.filter(file => {
+                    if (file.size > 10 * 1024 * 1024) { // 10 MB limit
+                        setError(`Image "${file.name}" is too large. Please select files under 10MB.`);
+                        return false;
+                    }
+                    return true;
+                });
+
+                if (!validFiles.length) return;
                 
-                const resizePromises = files.map(file => resizeImage(file));
+                const resizePromises = validFiles.map(file => resizeImage(file));
 
                 Promise.all(resizePromises)
                     .then(resizedImages => {
@@ -99,7 +119,7 @@
                     })
                     .catch(err => {
                         console.error("Error resizing images:", err);
-                        setError("There was an issue processing your images. Please try again.");
+                        setError("There was an issue processing your images.");
                     });
             };
 
@@ -117,7 +137,7 @@
                 setError(null);
                 
                 try {
-                    const prompt = `You are analyzing ${images.length} image(s) of an item someone wants to sell on Facebook Marketplace. Please examine the image(s) carefully and create a complete, ready-to-post listing written in the style of a friendly, caring 60 year old who is work hard to prepare and sell a valuable item.
+                    const prompt = `You are analyzing ${images.length} image(s) of an item someone wants to sell on Facebook Marketplace.  Please examine the image(s) carefully and create a complete, ready-to-post listing written in the style of a friendly, caring 60 year old who is work hard to prepare and sell a valuable item.
 
 Analyze the image(s) and provide a response in the following JSON format:
 {
@@ -133,14 +153,13 @@ Analyze the image(s) and provide a response in the following JSON format:
 Make the listing engaging and honest. Price competitively based on what you see. 
 Your entire response must be valid JSON only. DO NOT include any text outside the JSON structure.`;
 
-                    // *** THIS IS THE ONLY LINE THAT HAS CHANGED ***
                     const imagePayload = images.map(dataUri => dataUri.split(',')[1]);
 
                     const response = await fetch('/.netlify/functions/generate-listings', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            images: imagePayload, // Sends the cleaned-up Base64 strings
+                            images: imagePayload,
                             prompt: prompt
                         })
                     });
@@ -148,7 +167,7 @@ Your entire response must be valid JSON only. DO NOT include any text outside th
                     const data = await response.json();
                     
                     if (!response.ok) {
-                        throw new Error(data.error || 'Failed to generate listing');
+                        throw new Error(data.error || 'An unknown error occurred on the server.');
                     }
 
                     const content = data.choices[0].message.content;
@@ -157,12 +176,12 @@ Your entire response must be valid JSON only. DO NOT include any text outside th
                         const parsedListing = JSON.parse(content);
                         setListing(parsedListing);
                     } catch (parseError) {
-                        console.error('Error parsing response:', parseError);
-                        setError('Failed to parse the listing. Please try again.');
+                        console.error('Error parsing JSON response from AI:', parseError, "Raw content:", content);
+                        setError('The AI returned an invalid format. Please try again.');
                     }
                 } catch (err) {
-                    console.error('Error generating listing:', err);
-                    setError('Failed to generate listing. Please check your internet connection and try again.');
+                    console.error('Error in generateListing:', err);
+                    setError(err.message);
                 } finally {
                     setLoading(false);
                 }
@@ -228,7 +247,6 @@ Keywords: ${listing.keywords.join(', ')}`;
                             </p>
                         </header>
 
-                        {/* Step 1: Upload Photos */}
                         <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
@@ -367,7 +385,6 @@ Keywords: ${listing.keywords.join(', ')}`;
 
                         {listing && (
                             <>
-                                {/* Step 2: Review Listing */}
                                 <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
@@ -440,7 +457,6 @@ Keywords: ${listing.keywords.join(', ')}`;
                                     </div>
                                 </div>
 
-                                {/* Step 3: Post to Facebook */}
                                 <div className="bg-white rounded-xl shadow-lg p-8">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
@@ -470,101 +486,59 @@ Keywords: ${listing.keywords.join(', ')}`;
                                         
                                         <div className="space-y-4">
                                             <div className="flex gap-4">
-                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
-                                                    1
-                                                </div>
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">1</div>
                                                 <div>
                                                     <p className="text-lg text-gray-800 font-medium">Open Facebook</p>
-                                                    <p className="text-gray-600 mt-1">
-                                                        Go to <span className="font-medium">facebook.com</span> and log in to your account
-                                                    </p>
+                                                    <p className="text-gray-600 mt-1">Go to <span className="font-medium">facebook.com</span> and log in to your account</p>
                                                 </div>
                                             </div>
-
                                             <div className="flex gap-4">
-                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
-                                                    2
-                                                </div>
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">2</div>
                                                 <div>
                                                     <p className="text-lg text-gray-800 font-medium">Find Marketplace</p>
-                                                    <p className="text-gray-600 mt-1">
-                                                        Look for "Marketplace" in the menu on the left side of Facebook. 
-                                                        It looks like a little shop icon 🏪
-                                                    </p>
+                                                    <p className="text-gray-600 mt-1">Look for "Marketplace" in the menu on the left side of Facebook. It looks like a little shop icon 🏪</p>
                                                 </div>
                                             </div>
-
                                             <div className="flex gap-4">
-                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
-                                                    3
-                                                </div>
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">3</div>
                                                 <div>
                                                     <p className="text-lg text-gray-800 font-medium">Create New Listing</p>
-                                                    <p className="text-gray-600 mt-1">
-                                                        Click the button that says "Create new listing" or "Sell"
-                                                    </p>
+                                                    <p className="text-gray-600 mt-1">Click the button that says "Create new listing" or "Sell"</p>
                                                 </div>
                                             </div>
-
                                             <div className="flex gap-4">
-                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
-                                                    4
-                                                </div>
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">4</div>
                                                 <div>
                                                     <p className="text-lg text-gray-800 font-medium">Choose "Item for Sale"</p>
-                                                    <p className="text-gray-600 mt-1">
-                                                        Select this option (not vehicle or home)
-                                                    </p>
+                                                    <p className="text-gray-600 mt-1">Select this option (not vehicle or home)</p>
                                                 </div>
                                             </div>
-
                                             <div className="flex gap-4">
-                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
-                                                    5
-                                                </div>
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">5</div>
                                                 <div>
                                                     <p className="text-lg text-gray-800 font-medium">Add Your Photos</p>
-                                                    <p className="text-gray-600 mt-1">
-                                                        Click "Add Photos" and upload all {images.length} photo{images.length > 1 ? 's' : ''} you took here
-                                                    </p>
+                                                    <p className="text-gray-600 mt-1">Click "Add Photos" and upload all {images.length} photo{images.length > 1 ? 's' : ''} you took here</p>
                                                 </div>
                                             </div>
-
                                             <div className="flex gap-4">
-                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
-                                                    6
-                                                </div>
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">6</div>
                                                 <div>
                                                     <p className="text-lg text-gray-800 font-medium">Paste Your Information</p>
-                                                    <p className="text-gray-600 mt-1">
-                                                        Click in each box (Title, Price, Description, etc.) and paste 
-                                                        the information we copied for you. Use <span className="font-medium">Ctrl+V</span> on PC 
-                                                        or <span className="font-medium">Cmd+V</span> on Mac to paste.
-                                                    </p>
+                                                    <p className="text-gray-600 mt-1">Click in each box (Title, Price, Description, etc.) and paste the information we copied for you. Use <span className="font-medium">Ctrl+V</span> on PC or <span className="font-medium">Cmd+V</span> on Mac to paste.</p>
                                                 </div>
                                             </div>
-
                                             <div className="flex gap-4">
-                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
-                                                    7
-                                                </div>
+                                                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">7</div>
                                                 <div>
                                                     <p className="text-lg text-gray-800 font-medium">Set Your Location</p>
-                                                    <p className="text-gray-600 mt-1">
-                                                        Tell Facebook where you're located so buyers can find you
-                                                    </p>
+                                                    <p className="text-gray-600 mt-1">Tell Facebook where you're located so buyers can find you</p>
                                                 </div>
                                             </div>
-
                                             <div className="flex gap-4">
-                                                <div className="w-12 h-12 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
-                                                    8
-                                                </div>
+                                                <div className="w-12 h-12 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">8</div>
                                                 <div>
                                                     <p className="text-lg text-gray-800 font-medium">Publish Your Listing!</p>
-                                                    <p className="text-gray-600 mt-1">
-                                                        Click the blue "Publish" button and you're done! 🎉
-                                                    </p>
+                                                    <p className="text-gray-600 mt-1">Click the blue "Publish" button and you're done! 🎉</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -594,7 +568,6 @@ Keywords: ${listing.keywords.join(', ')}`;
                             </>
                         )}
                         
-                        {/* Help Section - Always visible */}
                         <div className="max-w-4xl mx-auto mt-8 mb-8">
                             <div className="bg-white rounded-xl shadow-lg p-8">
                                 <div className="flex items-center gap-3 mb-6">
@@ -626,7 +599,10 @@ Keywords: ${listing.keywords.join(', ')}`;
                                 
                                 {answer && (
                                     <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                                        <p className="text-lg text-gray-800 leading-relaxed">{answer}</p>
+                                        <div 
+                                            className="text-lg text-gray-800 leading-relaxed prose"
+                                            dangerouslySetInnerHTML={{ __html: marked.parse(answer) }} 
+                                        />
                                     </div>
                                 )}
                                 
