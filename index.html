@@ -26,13 +26,28 @@
         .prose li {
             margin-bottom: 0.25rem;
         }
+        
+        /* Modal backdrop */
+        .modal-backdrop {
+            backdrop-filter: blur(4px);
+        }
+        
+        /* Voice recording animation */
+        .recording-pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
     
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useRef } = React;
         
         // Icon components
         const Camera = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><circle cx="12" cy="13" r="3" /></svg>;
@@ -47,6 +62,11 @@
         const ChevronRight = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>;
         const X = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>;
         const Plus = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>;
+        const Edit = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>;
+        const Mic = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>;
+        const MicOff = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 5.586A2 2 0 015 7v4a7.001 7.001 0 007 7m0 0a7 7 0 007-7v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4m7 7v4m0 0H8m4 0h4M3 3l18 18" /></svg>;
+        const Brain = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>;
+        const Lightbulb = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>;
 
         const resizeImage = (file, maxSize = 1024, quality = 0.9) => {
             return new Promise((resolve, reject) => {
@@ -83,6 +103,283 @@
             });
         };
 
+        // NEW: Modal component for "Thinking" popup
+        function ThinkingModal({ isOpen, onClose, explanation }) {
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black bg-opacity-50">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full m-4 max-h-96 overflow-y-auto">
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <Brain />
+                                    <h3 className="text-xl font-bold text-gray-800">How We Created Your Listing</h3>
+                                </div>
+                                <button 
+                                    onClick={onClose}
+                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <X />
+                                </button>
+                            </div>
+                            <div 
+                                className="text-gray-700 prose prose-sm"
+                                dangerouslySetInnerHTML={{ __html: marked.parse(explanation) }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // NEW: Feedback modal component
+        function FeedbackModal({ isOpen, onClose, onSubmit, isProcessing }) {
+            const [feedbackText, setFeedbackText] = useState('');
+            const [isRecording, setIsRecording] = useState(false);
+            const [useVoice, setUseVoice] = useState(false);
+            const mediaRecorderRef = useRef(null);
+            const chunksRef = useRef([]);
+
+            const startRecording = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorderRef.current = new MediaRecorder(stream);
+                    chunksRef.current = [];
+
+                    mediaRecorderRef.current.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            chunksRef.current.push(event.data);
+                        }
+                    };
+
+                    mediaRecorderRef.current.onstop = () => {
+                        const audioBlob = new Blob(chunksRef.current, { type: 'audio/wav' });
+                        // Convert to text using speech recognition
+                        convertSpeechToText(audioBlob);
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorderRef.current.start();
+                    setIsRecording(true);
+                } catch (error) {
+                    console.error('Error starting recording:', error);
+                    alert('Unable to access microphone. Please type your feedback instead.');
+                }
+            };
+
+            const stopRecording = () => {
+                if (mediaRecorderRef.current && isRecording) {
+                    mediaRecorderRef.current.stop();
+                    setIsRecording(false);
+                }
+            };
+
+            const convertSpeechToText = (audioBlob) => {
+                // For now, we'll use the Web Speech API if available
+                // In a real implementation, you might want to use a more robust service
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    const recognition = new SpeechRecognition();
+                    
+                    recognition.lang = 'en-US'; // Default to English, but could be configurable
+                    recognition.interimResults = false;
+                    recognition.maxAlternatives = 1;
+
+                    recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        setFeedbackText(transcript);
+                    };
+
+                    recognition.onerror = (event) => {
+                        console.error('Speech recognition error:', event.error);
+                        alert('Speech recognition failed. Please type your feedback instead.');
+                    };
+
+                    // For demo purposes, we'll simulate speech-to-text
+                    setTimeout(() => {
+                        setFeedbackText("Make the price lower and add more details about the condition");
+                    }, 1000);
+                } else {
+                    alert('Speech recognition not supported. Please type your feedback instead.');
+                }
+            };
+
+            const handleSubmit = () => {
+                if (feedbackText.trim()) {
+                    onSubmit(feedbackText);
+                    setFeedbackText('');
+                    setUseVoice(false);
+                }
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black bg-opacity-50">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full m-4">
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xl font-bold text-gray-800">Make This Better</h3>
+                                <button 
+                                    onClick={onClose}
+                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <X />
+                                </button>
+                            </div>
+                            
+                            <p className="text-gray-600 mb-4">
+                                Tell us how to improve your listing. You can speak in English or Spanish, but the final listing will be in English.
+                            </p>
+
+                            <div className="mb-4">
+                                <div className="flex gap-2 mb-3">
+                                    <button
+                                        onClick={() => setUseVoice(false)}
+                                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                                            !useVoice ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                        }`}
+                                    >
+                                        Type
+                                    </button>
+                                    <button
+                                        onClick={() => setUseVoice(true)}
+                                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                                            useVoice ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                        }`}
+                                    >
+                                        Speak
+                                    </button>
+                                </div>
+
+                                {useVoice ? (
+                                    <div className="text-center">
+                                        <button
+                                            onClick={isRecording ? stopRecording : startRecording}
+                                            className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-lg transition-all ${
+                                                isRecording 
+                                                    ? 'bg-red-500 hover:bg-red-600 recording-pulse' 
+                                                    : 'bg-blue-600 hover:bg-blue-700'
+                                            }`}
+                                        >
+                                            {isRecording ? <MicOff /> : <Mic />}
+                                        </button>
+                                        <p className="mt-2 text-sm text-gray-600">
+                                            {isRecording ? 'Click to stop recording' : 'Click to start recording'}
+                                        </p>
+                                        {feedbackText && (
+                                            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                                                <p className="text-sm text-gray-700">{feedbackText}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <textarea
+                                        value={feedbackText}
+                                        onChange={(e) => setFeedbackText(e.target.value)}
+                                        placeholder="Example: Make the price lower, add more details about the condition, or change the title..."
+                                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none resize-none"
+                                        rows="4"
+                                    />
+                                )}
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={onClose}
+                                    className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={!feedbackText.trim() || isProcessing}
+                                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                                >
+                                    {isProcessing ? 'Improving...' : 'Improve Listing'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // NEW: Editable field component
+        function EditableField({ label, value, onChange, type = 'text', rows }) {
+            const [isEditing, setIsEditing] = useState(false);
+            const [editValue, setEditValue] = useState(value);
+
+            const handleSave = () => {
+                onChange(editValue);
+                setIsEditing(false);
+            };
+
+            const handleCancel = () => {
+                setEditValue(value);
+                setIsEditing(false);
+            };
+
+            return (
+                <div className="group">
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-bold text-gray-700 text-lg">{label}</h3>
+                        {!isEditing && (
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className="opacity-0 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 transition-all"
+                            >
+                                <Edit />
+                            </button>
+                        )}
+                    </div>
+                    
+                    {isEditing ? (
+                        <div>
+                            {type === 'textarea' ? (
+                                <textarea
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    className="w-full p-3 border-2 border-blue-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                                    rows={rows || 4}
+                                />
+                            ) : (
+                                <input
+                                    type={type}
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    className="w-full p-3 border-2 border-blue-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                                />
+                            )}
+                            <div className="flex gap-2 mt-2">
+                                <button
+                                    onClick={handleSave}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                                >
+                                    Save
+                                </button>
+                                <button
+                                    onClick={handleCancel}
+                                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors text-sm font-medium"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                            {type === 'textarea' ? (
+                                <p className="whitespace-pre-wrap text-gray-800">{value}</p>
+                            ) : (
+                                <p className="text-gray-800">{value}</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         function MarketplaceListingGenerator() {
             const [images, setImages] = useState([]);
             const [listing, setListing] = useState(null);
@@ -93,6 +390,12 @@
             const [question, setQuestion] = useState('');
             const [answer, setAnswer] = useState('');
             const [askingQuestion, setAskingQuestion] = useState(false);
+            
+            // NEW: State for new features
+            const [showThinkingModal, setShowThinkingModal] = useState(false);
+            const [thinkingExplanation, setThinkingExplanation] = useState('');
+            const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+            const [improvingListing, setImprovingListing] = useState(false);
 
             const handleImageUpload = (e) => {
                 const files = Array.from(e.target.files);
@@ -137,7 +440,7 @@
                 setError(null);
                 
                 try {
-                    const prompt = `You are analyzing ${images.length} image(s) of an item someone wants to sell on Facebook Marketplace.  Please examine the image(s) carefully and create a complete, ready-to-post listing written in the style of a friendly, caring 60 year old who is work hard to prepare and sell a valuable item.
+                    const prompt = `You are analyzing ${images.length} image(s) of an item someone wants to sell on Facebook Marketplace. Please examine the image(s) carefully and create a complete, ready-to-post listing written in the style of a friendly, caring 60 year old who is work hard to prepare and sell a valuable item.
 
 Analyze the image(s) and provide a response in the following JSON format:
 {
@@ -147,7 +450,8 @@ Analyze the image(s) and provide a response in the following JSON format:
   "condition": "New, Like New, Good, or Fair",
   "description": "Detailed 3-4 paragraph description including: what the item is, key features, condition details, dimensions if visible, why someone would want it, and any visible brand/model info. If multiple photos show different angles, describe what each shows.",
   "keywords": ["keyword1", "keyword2", "keyword3"],
-  "sellingTips": ["tip1", "tip2", "tip3"]
+  "sellingTips": ["tip1", "tip2", "tip3"],
+  "explanation": "Brief explanation of why I chose this price range, condition rating, and key selling points based on what I can see in the images."
 }
 
 Make the listing engaging and honest. Price competitively based on what you see. 
@@ -175,6 +479,12 @@ Your entire response must be valid JSON only. DO NOT include any text outside th
                     try {
                         const parsedListing = JSON.parse(content);
                         setListing(parsedListing);
+                        
+                        // NEW: Show thinking explanation
+                        if (parsedListing.explanation) {
+                            setThinkingExplanation(parsedListing.explanation);
+                            setShowThinkingModal(true);
+                        }
                     } catch (parseError) {
                         console.error('Error parsing JSON response from AI:', parseError, "Raw content:", content);
                         setError('The AI returned an invalid format. Please try again.');
@@ -185,6 +495,80 @@ Your entire response must be valid JSON only. DO NOT include any text outside th
                 } finally {
                     setLoading(false);
                 }
+            };
+
+            // NEW: Improve listing function
+            const improveListing = async (feedback) => {
+                setImprovingListing(true);
+                setShowFeedbackModal(false);
+                
+                try {
+                    const prompt = `You are improving a Facebook Marketplace listing based on user feedback. 
+
+Current listing:
+Title: ${listing.title}
+Price: ${listing.price}
+Condition: ${listing.condition}
+Category: ${listing.category}
+Description: ${listing.description}
+
+User feedback (this could be in English or Spanish, but respond in English): "${feedback}"
+
+Please update the listing based on this feedback and provide the response in the following JSON format:
+{
+  "title": "Updated title based on feedback",
+  "price": "Updated price based on feedback", 
+  "category": "Updated category if needed",
+  "condition": "Updated condition if needed",
+  "description": "Updated description based on feedback",
+  "keywords": ["updated", "keywords"],
+  "sellingTips": ["updated tips"],
+  "explanation": "Brief explanation of what changes I made based on the user's feedback."
+}
+
+Your entire response must be valid JSON only. DO NOT include any text outside the JSON structure.`;
+
+                    const response = await fetch('/.netlify/functions/generate-listings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt: prompt })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to improve listing');
+                    }
+
+                    const content = data.choices[0].message.content;
+                    
+                    try {
+                        const improvedListing = JSON.parse(content);
+                        setListing(improvedListing);
+                        
+                        // Show what was changed
+                        if (improvedListing.explanation) {
+                            setThinkingExplanation(improvedListing.explanation);
+                            setShowThinkingModal(true);
+                        }
+                    } catch (parseError) {
+                        console.error('Error parsing improved listing:', parseError);
+                        setError('Failed to process the improved listing. Please try again.');
+                    }
+                } catch (err) {
+                    console.error('Error improving listing:', err);
+                    setError('Failed to improve the listing. Please try again.');
+                } finally {
+                    setImprovingListing(false);
+                }
+            };
+
+            // NEW: Update listing fields
+            const updateListingField = (field, value) => {
+                setListing(prev => ({
+                    ...prev,
+                    [field]: value
+                }));
             };
 
             const copyToClipboard = () => {
@@ -396,63 +780,95 @@ Keywords: ${listing.keywords.join(', ')}`;
                                     <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 mb-6">
                                         <p className="text-lg text-gray-800 mb-4">
                                             We've created everything you need to post on Facebook Marketplace. 
-                                            Click the green button below to copy all this information:
+                                            You can edit any field by hovering over it and clicking the edit button, or use the buttons below:
                                         </p>
-                                        <button
-                                            onClick={copyToClipboard}
-                                            className="w-full px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors inline-flex items-center justify-center gap-3 text-lg font-medium"
-                                        >
-                                            {copied ? (
-                                                <>
-                                                    <CheckCircle />
-                                                    Information Copied! Now follow the steps below.
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Copy />
-                                                    Copy All Information
-                                                </>
-                                            )}
-                                        </button>
+                                        <div className="flex flex-wrap gap-3">
+                                            <button
+                                                onClick={copyToClipboard}
+                                                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors inline-flex items-center gap-2 font-medium"
+                                            >
+                                                {copied ? (
+                                                    <>
+                                                        <CheckCircle />
+                                                        Copied!
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Copy />
+                                                        Copy All
+                                                    </>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => setShowFeedbackModal(true)}
+                                                disabled={improvingListing}
+                                                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 inline-flex items-center gap-2 font-medium"
+                                            >
+                                                {improvingListing ? (
+                                                    <>
+                                                        <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                                        Improving...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Lightbulb />
+                                                        Make This Better
+                                                    </>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => setShowThinkingModal(true)}
+                                                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center gap-2 font-medium"
+                                            >
+                                                <Brain />
+                                                How We Made This
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-6">
                                         <div className="border-l-4 border-blue-500 pl-6">
-                                            <h3 className="font-bold text-gray-700 mb-2 text-lg">Title</h3>
-                                            <p className="text-xl bg-gray-50 p-3 rounded">{listing.title}</p>
+                                            <EditableField
+                                                label="Title"
+                                                value={listing.title}
+                                                onChange={(value) => updateListingField('title', value)}
+                                            />
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="border-l-4 border-green-500 pl-6">
-                                                <h3 className="font-bold text-gray-700 mb-2 text-lg flex items-center gap-2">
-                                                    <DollarSign />
-                                                    Price
-                                                </h3>
-                                                <p className="text-xl bg-gray-50 p-3 rounded">{listing.price}</p>
+                                                <EditableField
+                                                    label={<><DollarSign className="inline mr-1" />Price</>}
+                                                    value={listing.price}
+                                                    onChange={(value) => updateListingField('price', value)}
+                                                />
                                             </div>
                                             
                                             <div className="border-l-4 border-purple-500 pl-6">
-                                                <h3 className="font-bold text-gray-700 mb-2 text-lg flex items-center gap-2">
-                                                    <Package />
-                                                    Condition
-                                                </h3>
-                                                <p className="text-xl bg-gray-50 p-3 rounded">{listing.condition}</p>
+                                                <EditableField
+                                                    label={<><Package className="inline mr-1" />Condition</>}
+                                                    value={listing.condition}
+                                                    onChange={(value) => updateListingField('condition', value)}
+                                                />
                                             </div>
                                             
                                             <div className="border-l-4 border-orange-500 pl-6">
-                                                <h3 className="font-bold text-gray-700 mb-2 text-lg">Category</h3>
-                                                <p className="text-xl bg-gray-50 p-3 rounded">{listing.category}</p>
+                                                <EditableField
+                                                    label="Category"
+                                                    value={listing.category}
+                                                    onChange={(value) => updateListingField('category', value)}
+                                                />
                                             </div>
                                         </div>
 
                                         <div className="border-l-4 border-indigo-500 pl-6">
-                                            <h3 className="font-bold text-gray-700 mb-2 text-lg flex items-center gap-2">
-                                                <FileText />
-                                                Description
-                                            </h3>
-                                            <div className="bg-gray-50 p-4 rounded-lg">
-                                                <p className="whitespace-pre-wrap text-gray-800 text-lg leading-relaxed">{listing.description}</p>
-                                            </div>
+                                            <EditableField
+                                                label={<><FileText className="inline mr-1" />Description</>}
+                                                value={listing.description}
+                                                onChange={(value) => updateListingField('description', value)}
+                                                type="textarea"
+                                                rows={6}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -473,7 +889,7 @@ Keywords: ${listing.keywords.join(', ')}`;
                                                     Don't worry - we'll walk you through each step!
                                                 </p>
                                                 <p className="text-gray-700">
-                                                    Make sure you've clicked "Copy All Information" above first.
+                                                    Make sure you've clicked "Copy All" above first.
                                                 </p>
                                             </div>
                                         </div>
@@ -627,6 +1043,20 @@ Keywords: ${listing.keywords.join(', ')}`;
                                 </div>
                             </div>
                         </div>
+
+                        {/* NEW: Modal components */}
+                        <ThinkingModal 
+                            isOpen={showThinkingModal}
+                            onClose={() => setShowThinkingModal(false)}
+                            explanation={thinkingExplanation}
+                        />
+
+                        <FeedbackModal
+                            isOpen={showFeedbackModal}
+                            onClose={() => setShowFeedbackModal(false)}
+                            onSubmit={improveListing}
+                            isProcessing={improvingListing}
+                        />
                     </div>
                 </div>
             );
