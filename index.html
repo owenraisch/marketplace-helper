@@ -440,7 +440,7 @@
                 setError(null);
                 
                 try {
-                    const prompt = `You are analyzing ${images.length} image(s) of an item someone wants to sell on Facebook Marketplace. Please examine the image(s) carefully and create a complete, ready-to-post listing written in the style of a friendly, caring 60 year old who is work hard to prepare and sell a valuable item.
+                    const prompt = `You are analyzing ${images.length} image(s) of an item someone wants to sell on Facebook Marketplace.  Please examine the image(s) carefully and create a complete, ready-to-post listing written in the style of a friendly, caring 60 year old who is work hard to prepare and sell a valuable item.
 
 Analyze the image(s) and provide a response in the following JSON format:
 {
@@ -476,11 +476,19 @@ Your entire response must be valid JSON only. DO NOT include any text outside th
 
                     const content = data.choices[0].message.content;
                     
+                    // Clean potential markdown formatting
+                    let cleanContent = content.trim();
+                    if (cleanContent.startsWith('```json')) {
+                        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+                    } else if (cleanContent.startsWith('```')) {
+                        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/```\s*$/, '');
+                    }
+                    
                     try {
-                        const parsedListing = JSON.parse(content);
+                        const parsedListing = JSON.parse(cleanContent);
                         setListing(parsedListing);
                         
-                        // NEW: Show thinking explanation
+                        // NEW: Show thinking explanation (only if it exists)
                         if (parsedListing.explanation) {
                             setThinkingExplanation(parsedListing.explanation);
                             setShowThinkingModal(true);
@@ -491,7 +499,22 @@ Your entire response must be valid JSON only. DO NOT include any text outside th
                     }
                 } catch (err) {
                     console.error('Error in generateListing:', err);
-                    setError(err.message);
+                    setError(`Error: ${err.message}. Check browser console for details.`);
+                    
+                    // Temporary fallback for testing UI (remove this in production)
+                    if (err.message.includes('Failed to fetch') || err.message.includes('unknown error')) {
+                        const fallbackListing = {
+                            title: "Test Item - Great Condition",
+                            price: "$25",
+                            category: "Home & Garden",
+                            condition: "Good",
+                            description: "This is a test listing to verify the interface works. Replace this with actual AI-generated content once the server issues are resolved.",
+                            keywords: ["test", "item", "sample"],
+                            sellingTips: ["Take clear photos", "Price competitively", "Be responsive"],
+                            explanation: "This is a test explanation to show how the thinking modal works."
+                        };
+                        setListing(fallbackListing);
+                    }
                 } finally {
                     setLoading(false);
                 }
@@ -542,8 +565,16 @@ Your entire response must be valid JSON only. DO NOT include any text outside th
 
                     const content = data.choices[0].message.content;
                     
+                    // Clean potential markdown formatting
+                    let cleanContent = content.trim();
+                    if (cleanContent.startsWith('```json')) {
+                        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+                    } else if (cleanContent.startsWith('```')) {
+                        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/```\s*$/, '');
+                    }
+                    
                     try {
-                        const improvedListing = JSON.parse(content);
+                        const improvedListing = JSON.parse(cleanContent);
                         setListing(improvedListing);
                         
                         // Show what was changed
