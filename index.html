@@ -440,7 +440,7 @@
                 setError(null);
                 
                 try {
-                    const prompt = `You are analyzing ${images.length} image(s) of an item someone wants to sell on Facebook Marketplace.  Please examine the image(s) carefully and create a complete, ready-to-post listing written in the style of a friendly, caring 60 year old who is work hard to prepare and sell a valuable item.
+                    const prompt = `You are analyzing ${images.length} image(s) of an item someone wants to sell on Facebook Marketplace.  Please examine the image(s) carefully and create a complete, ready-to-post listing written in the style of a friendly, caring 60 year old who is working hard to prepare and sell a valuable item. It should not be too sales-y but honest, authentic and careful to point out the main potential negative (not too negative) alongw with each of the highlights for the purchase. 
 
 Analyze the image(s) and provide a response in the following JSON format:
 {
@@ -451,10 +451,10 @@ Analyze the image(s) and provide a response in the following JSON format:
   "description": "Detailed 3-4 paragraph description including: what the item is, key features, condition details, dimensions if visible, why someone would want it, and any visible brand/model info. If multiple photos show different angles, describe what each shows.",
   "keywords": ["keyword1", "keyword2", "keyword3"],
   "sellingTips": ["tip1", "tip2", "tip3"],
-  "explanation": "Brief explanation of why I chose this price range, condition rating, and key selling points based on what I can see in the images."
+  "explanation": "Brief explanation of why I chose this price range (indicating some similar examples), condition rating, and key selling points based on what I can see in the images. The explanation should convince the user of your decision and help them see what you might have missed"
 }
 
-Make the listing engaging and honest. Price competitively based on what you see. 
+Make the listing engaging and honest and in the authentic voice. Price competitively based on what you see. 
 Your entire response must be valid JSON only. DO NOT include any text outside the JSON structure.`;
 
                     const imagePayload = images.map(dataUri => dataUri.split(',')[1]);
