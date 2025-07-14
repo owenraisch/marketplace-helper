@@ -468,10 +468,16 @@ Your entire response must be valid JSON only. DO NOT include any text outside th
                         })
                     });
 
-                    const data = await response.json();
-                    
+                    const text = await response.text();
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch {
+                        data = null; // Not valid JSON, will use text below
+                    }
                     if (!response.ok) {
-                        throw new Error(data.error || 'An unknown error occurred on the server.');
+                        const errorMsg = data?.error || data?.message || text || 'An unknown error occurred on the server.';
+                        throw new Error(errorMsg);
                     }
 
                     const content = data.choices[0].message.content;
